@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Tabel Harga Live Real-Time</title>
+  <style>
+    body {font-family: Arial, sans-serif; background:#f0f2f5; margin:20px;}
+    table {width:100%; max-width:900px; margin:auto; border-collapse:collapse; background:white; box-shadow:0 4px 12px rgba(0,0,0,0.1);}
+    th, td {padding:12px; text-align:center; border-bottom:1px solid #ddd;}
+    th {background:#007bff; color:white;}
+    .up {color:#28a745; font-weight:bold;}
+    .down {color:#dc3545; font-weight:bold;}
+    .title {text-align:center; font-size:1.8em; margin:20px;}
+    .update {text-align:center; color:#666; font-style:italic; margin:10px;}
+  </style>
+</head>
+<body>
+
+  <h1 class="title">Tabel Harga Live (Update Otomatis)</h1>
+  <p class="update" id="last">Memuat data...</p>
+
+  <table id="priceTable">
+    <thead>
+      <tr>
+        <th>Kategori</th><th>Aset</th><th>Harga (USD)</th><th>Perubahan 24 jam</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Saham -->
+      <tr><td>Saham</td><td>NVIDIA (NVDA)</td><td id="NVDA">-</td><td id="NVDA_ch">-</td></tr>
+      <tr><td>Saham</td><td>Tesla (TSLA)</td><td id="TSLA">-</td><td id="TSLA_ch">-</td></tr>
+
+      <!-- Commodity -->
+      <tr><td>Commodity</td><td>Crude Oil (WTI)</td><td id="OIL">-</td><td id="OIL_ch">-</td></tr>
+      <tr><td>Commodity</td><td>Brent Oil</td><td id="BRENT">-</td><td id="BRENT_ch">-</td></tr>
+
+      <!-- Currency -->
+      <tr><td>Currency</td><td>USD/JPY</td><td id="USDJPY">-</td><td id="USDJPY_ch">-</td></tr>
+      <tr><td>Currency</td><td>EUR/USD</td><td id="EURUSD">-</td><td id="EURUSD_ch">-</td></tr>
+
+      <!-- Crypto -->
+      <tr><td>Crypto</td><td>Bitcoin (BTC)</td><td id="BTC">-</td><td id="BTC_ch">-</td></tr>
+      <tr><td>Crypto</td><td>Ethereum (ETH)</td><td id="ETH">-</td><td id="ETH_ch">-</td></tr>
+
+      <!-- Metal -->
+      <tr><td>Metal</td><td>Gold (XAU)</td><td id="GOLD">-</td><td id="GOLD_ch">-</td></tr>
+      <tr><td>Metal</td><td>Silver (XAG)</td><td id="SILVER">-</td><td id="SILVER_ch">-</td></tr>
+    </tbody>
+  </table>
+
+<script>
+// Semua data diambil dari API GRATIS (tidak perlu key!)
+const assets = {
+  // Saham (Yahoo Finance via Financial Modeling Prep - demo key sudah cukup)
+  NVDA:  {url: "https://query1.finance.yahoo.com/v8/finance/chart/NVDA"},
+  TSLA:  {url: "https://query1.finance.yahoo.com/v8/finance/chart/TSLA"},
+
+  // Commodity (Yahoo)
+  OIL:   {url: "https://query1.finance.yahoo.com/v8/finance/chart/CL=F"},  // WTI Crude
+  BRENT: {url: "https://query1.finance.yahoo.com/v8/finance/chart/BZ=F"},  // Brent
+
+  // Forex (Yahoo)
+  USDJPY: {url: "https://query1.finance.yahoo.com/v8/finance/chart/USDJPY=X"},
+  EURUSD: {url: "https://query1.finance.yahoo.com/v8/finance/chart/EURUSD=X"},
+
+  // Crypto & Metal (CoinGecko - 100% gratis tanpa key)
+  BTC:    "bitcoin",
+  ETH:    "ethereum",
+  GOLD:   "gold",
+  SILVER: "silver"
+};
+
+async function updatePrices() {
+  const now = new Date().toLocaleString('id-ID');
+  document.getElementById("last").textContent = "Terakhir update: " + now;
+
+  // 1. Saham & Forex & Oil (Yahoo Finance)
+  const yahooSymbols = ["NVDA","TSLA","CL=F","BZ=F","USDJPY=X","EURUSD=X"];
+  for (const sym of yahooSymbols) {
+    try {
+      const res = await fetch(assets[sym].url);
+      const json = await res.json();
+      const price = json.chart.result[0].meta.regularMarketPrice.toFixed(2);
+      const prev   = json.chart.result[0].meta.previousClose;
+      const change = ((price - prev)/prev*100).toFixed(2);
+      const elPrice = document.getElementById(sym.replace(/[=]/g,''));
+      const elCh    = document.getElementById(sym.replace(/[=]/g,'')+"_ch");
+      elPrice.textContent = (sym.includes("JPY") || sym.includes("EUR")) ? price : "$"+price;
+      elCh.textContent = (change>0?"+":"") + change + "%";
+      elCh.className = change >= 0 ? "up" : "down";
+    } catch(e) { console.log(sym,e); }
+  }
+
+  // 2. Crypto & Metal (CoinGecko)
+  const cgIds = "bitcoin,ethereum";
+  const cgRes = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${cgIds}&vs_currencies=usd&include_24hr_change=true`);
+  const cg = await cgRes.json();
+  // BTC
+  document.getElementById("BTC").textContent = "$"+cg.bitcoin.usd.toLocaleString();
+  document.getElementById("BTC_ch").textContent = (cg.bitcoin.usd_24h_change>0?"+":"") + cg.bitcoin.usd_24h_change.toFixed(2)+"%";
+  document.getElementById("BTC_ch").className = cg.bitcoin.usd_24h_change >= 0 ? "up" : "down";
+  // ETH
+  document.getElementById("ETH").textContent = "$"+cg.ethereum.usd.toLocaleString();
+  document.getElementById("ETH_ch").textContent = (cg.ethereum.usd_24h_change>0?"+":"") + cg.ethereum.usd_24h_change.toFixed(2)+"%";
+  document.getElementById("ETH_ch").className = cg.ethereum.usd_24h_change >= 0 ? "up" : "down";
+
+  // Gold & Silver dari CoinGecko (mereka punya data metal juga)
+  const metalRes = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=gold,silver&vs_currencies=usd&include_24hr_change=true");
+  const metal = await metalRes.json();
+  document.getElementById("GOLD").textContent = "$"+metal.gold.usd.toFixed(2);
+  document.getElementById("GOLD_ch").textContent = (metal.gold.usd_24h_change>0?"+":"")+metal.gold.usd_24h_change.toFixed(2)+"%";
+  document.getElementById("GOLD_ch").className = metal.gold.usd_24h_change >= 0 ? "up" : "down";
+
+  document.getElementById("SILVER").textContent = "$"+metal.silver.usd.toFixed(2);
+  document.getElementById("SILVER_ch").textContent = (metal.silver.usd_24h_change>0?"+":"")+metal.silver.usd_24h_change.toFixed(2)+"%";
+  document.getElementById("SILVER_ch").className = metal.silver.usd_24h_change >= 0 ? "up" : "down";
+}
+
+// Pertama kali & setiap 15 detik
+updatePrices();
+setInterval(updatePrices, 15000);
+</script>
+
+</body>
+</html>
