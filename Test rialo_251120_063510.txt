@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Live Price Table - Stocks, Commodities, Forex, Crypto & Metals</title>
+  <title>Live Price Table + RIALO</title>
   <style>
     body {font-family: Arial, sans-serif; background:#f0f2f5; margin:20px;}
-    table {width:100%; max-width:900px; margin:auto; border-collapse:collapse; background:white; box-shadow:0 4px 12px rgba(0,0,0,0.1);}
+    table {width:100%; max-width:950px; margin:auto; border-collapse:collapse; background:white; box-shadow:0 4px 12px rgba(0,0,0,0.1);}
     th, td {padding:14px; text-align:center; border-bottom:1px solid #ddd;}
     th {background:#007bff; color:white; font-size:1.1em;}
     .up {color:#28a745; font-weight:bold;}
@@ -17,7 +17,7 @@
 </head>
 <body>
 
-  <h1 class="title">Live Price Dashboard</h1>
+  <h1 class="title">Live Price Dashboard + RIALO</h1>
   <p class="update" id="last">Loading data...</p>
 
   <table id="priceTable">
@@ -49,25 +49,35 @@
       <!-- Metals -->
       <tr><td>Metal</td><td>Gold (XAU)</td><td id="GOLD">-</td><td id="GOLD_ch">-</td></tr>
       <tr><td>Metal</td><td>Silver (XAG)</td><td id="SILVER">-</td><td id="SILVER_ch">-</td></tr>
+
+      <!-- RIALO (Custom) -->
+      <tr style="background:#fff8e1;">
+        <td>Custom</td>
+        <td>RIALO</td>
+        <td id="RIALO">-</td>
+        <td id="RIALO_ch">-</td>
+      </tr>
     </tbody>
   </table>
 
 <script>
-// All data comes from FREE APIs (no key required)
 const assets = {
   NVDA:   "https://query1.finance.yahoo.com/v8/finance/chart/NVDA",
   TSLA:   "https://query1.finance.yahoo.com/v8/finance/chart/TSLA",
-  OIL:    "https://query1.finance.yahoo.com/v8/finance/chart/CL=F",   // WTI Crude
-  BRENT:  "https://query1.finance.yahoo.com/v8/finance/chart/BZ=F",   // Brent
+  OIL:    "https://query1.finance.yahoo.com/v8/finance/chart/CL=F",
+  BRENT:  "https://query1.finance.yahoo.com/v8/finance/chart/BZ=F",
   USDJPY: "https://query1.finance.yahoo.com/v8/finance/chart/USDJPY=X",
   EURUSD: "https://query1.finance.yahoo.com/v8/finance/chart/EURUSD=X"
 };
+
+let goldPrice = 0;
+let goldChange = 0;
 
 async function updatePrices() {
   const now = new Date().toLocaleString();
   document.getElementById("last").textContent = "Last updated: " + now;
 
-  // 1. Stocks, Commodities & Forex (Yahoo Finance)
+  // 1. Stocks, Commodities & Forex (Yahoo)
   const yahooSymbols = ["NVDA","TSLA","CL=F","BZ=F","USDJPY=X","EURUSD=X"];
   for (const sym of yahooSymbols) {
     try {
@@ -92,7 +102,7 @@ async function updatePrices() {
     } catch(e) { console.log(sym, e); }
   }
 
-  // 2. Crypto (CoinGecko)
+  // 2. Crypto
   const cg = await (await fetch("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd&include_24hr_change=true")).json();
   document.getElementById("BTC").textContent = "$" + cg.bitcoin.usd.toLocaleString();
   document.getElementById("BTC_ch").textContent = (cg.bitcoin.usd_24h_change>0?"+":"") + cg.bitcoin.usd_24h_change.toFixed(2)+"%";
@@ -102,18 +112,29 @@ async function updatePrices() {
   document.getElementById("ETH_ch").textContent = (cg.ethereum.usd_24h_change>0?"+":"") + cg.ethereum.usd_24h_change.toFixed(2)+"%";
   document.getElementById("ETH_ch").className = cg.ethereum.usd_24h_change >= 0 ? "up" : "down";
 
-  // 3. Metals (CoinGecko also provides Gold & Silver)
+  // 3. Metals (Gold & Silver) — kita simpan nilai Gold untuk RIALO
   const metal = await (await fetch("https://api.coingecko.com/api/v3/simple/price?ids=gold,silver&vs_currencies=usd&include_24hr_change=true")).json();
-  document.getElementById("GOLD").textContent = "$" + metal.gold.usd.toFixed(2);
-  document.getElementById("GOLD_ch").textContent = (metal.gold.usd_24h_change>0?"+":"") + metal.gold.usd_24h_change.toFixed(2)+"%";
-  document.getElementById("GOLD_ch").className = metal.gold.usd_24h_change >= 0 ? "up" : "down";
 
+  // Gold
+  goldPrice = metal.gold.usd;
+  goldChange = metal.gold.usd_24h_change;
+  document.getElementById("GOLD").textContent = "$" + goldPrice.toFixed(2);
+  document.getElementById("GOLD_ch").textContent = (goldChange>0?"+":"") + goldChange.toFixed(2)+"%";
+  document.getElementById("GOLD_ch").className = goldChange >= 0 ? "up" : "down";
+
+  // Silver
   document.getElementById("SILVER").textContent = "$" + metal.silver.usd.toFixed(2);
   document.getElementById("SILVER_ch").textContent = (metal.silver.usd_24h_change>0?"+":"") + metal.silver.usd_24h_change.toFixed(2)+"%";
   document.getElementById("SILVER_ch").className = metal.silver.usd_24h_change >= 0 ? "up" : "down";
+
+  // RIALO = Gold price ÷ 1000
+  const rialoPrice = goldPrice / 1000;
+  document.getElementById("RIALO").textContent = "$" + rialoPrice.toFixed(4);
+  document.getElementById("RIALO_ch").textContent = (goldChange>0?"+":"") + goldChange.toFixed(2)+"%";
+  document.getElementById("RIALO_ch").className = goldChange >= 0 ? "up" : "down";
 }
 
-// Run immediately + every 15 seconds
+// Update every 15 seconds
 updatePrices();
 setInterval(updatePrices, 15000);
 </script>
